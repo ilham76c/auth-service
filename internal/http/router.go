@@ -1,8 +1,8 @@
 package http
 
 import (
-	"github.com/gin-gonic/gin"
 	"auth-service/internal/auth"
+	"github.com/gin-gonic/gin"
 )
 
 func SetupRouter(authSvc *auth.Service, jwtSvc *auth.JWTService) *gin.Engine {

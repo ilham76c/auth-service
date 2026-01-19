@@ -3,8 +3,8 @@ package http
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"auth-service/internal/auth"
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -41,4 +41,3 @@ func (h *Handler) Me(c *gin.Context) {
 	claims := c.MustGet("user").(jwt.MapClaims)
 	c.JSON(http.StatusOK, claims)
 }
-
