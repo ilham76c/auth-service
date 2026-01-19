@@ -1,0 +1,31 @@
+run:
+  timeout: 3m
+  tests: false
+
+linters:
+  enable:
+    - govet        # basic correctness
+    - errcheck     # check ignored errors
+    - staticcheck  # advanced static analysis
+    - gosimple     # simplify code
+    - ineffassign  # detect unused assignments
+    - typecheck    # type errors
+    - revive       # style & best practice
+    - gofmt        # formatting
+    - goimports    # import order
+    - bodyclose    # http response body close
+    - asciicheck   # no weird unicode
+
+linters-settings:
+  revive:
+    rules:
+      - name: var-naming
+      - name: line-length-limit
+        arguments: [120]
+
+issues:
+  exclude-use-default: false
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
