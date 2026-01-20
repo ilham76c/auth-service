@@ -57,3 +57,19 @@ It fits perfectly in a **microservice architecture** with:
 
 ```http
 POST /auth/login
+```
+
+---
+
+## ▶️ Run Application
+
+### Local
+```bash
+go run cmd/server/main.go
+```
+
+### Docker
+```bash
+docker build -t auth-service .
+docker run -p 8080:8080 -e JWT_SECRET=super-secret-key auth-service
+```
