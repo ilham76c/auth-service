@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"auth-service/internal/auth"
+
 	"github.com/gin-gonic/gin"
 )
 

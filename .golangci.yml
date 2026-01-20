@@ -3,18 +3,16 @@ run:
   tests: false
 
 linters:
+  disable-all: true
   enable:
-    - govet        # basic correctness
-    - errcheck     # check ignored errors
-    - staticcheck  # advanced static analysis
-    - gosimple     # simplify code
-    - ineffassign  # detect unused assignments
-    - typecheck    # type errors
-    - revive       # style & best practice
-    - gofmt        # formatting
-    - goimports    # import order
-    - bodyclose    # http response body close
-    - asciicheck   # no weird unicode
+    # Safe & non-goanalysis linters
+    - govet
+    - errcheck
+    - ineffassign
+    - typecheck
+    - revive
+    - gofmt
+    - goimports
 
 linters-settings:
   revive:

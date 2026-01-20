@@ -3,15 +3,16 @@ package main
 import (
 	"log"
 
-	"github.com/joho/godotenv"
 	"auth-service/internal/auth"
 	"auth-service/internal/config"
 	httpLayer "auth-service/internal/http"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
 	_ = godotenv.Load() // ignore error in prod
-	
+
 	cfg := config.Load()
 
 	jwtSvc := auth.NewJWTService(cfg.JWTSecret)

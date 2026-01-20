@@ -73,3 +73,11 @@ go run cmd/server/main.go
 docker build -t auth-service .
 docker run -p 8080:8080 -e JWT_SECRET=super-secret-key auth-service
 ```
+
+
+## Run Linter and Formatter
+```bash
+make fmt
+make lint
+make run
+```
