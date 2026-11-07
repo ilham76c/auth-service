@@ -6,6 +6,8 @@ import (
 	"auth-service/internal/auth"
 	"auth-service/internal/config"
 	"auth-service/internal/database"
+	"auth-service/internal/repository"
+
 	httpLayer "auth-service/internal/http"
 
 	"github.com/joho/godotenv"
@@ -25,7 +27,16 @@ func main() {
 	log.Println("PostgreSQL connected successfully")
 
 	jwtSvc := auth.NewJWTService(cfg.JWTSecret)
-	authSvc := auth.NewService(jwtSvc)
+
+	userRepo := repository.NewUserRepository(db)
+
+	refreshRepo := repository.NewRefreshTokenRepository(db)
+
+	authSvc := auth.NewService(
+		jwtSvc,
+		userRepo,
+		refreshRepo,
+	)
 
 	router := httpLayer.SetupRouter(authSvc, jwtSvc)
 
