@@ -20,6 +20,8 @@ func SetupRouter(
 	h := NewHandler(authSvc)
 
 	r.POST("/auth/login", h.Login)
+	r.POST("/auth/refresh", h.Refresh)
+	r.POST("/auth/logout", h.Logout)
 
 	protected := r.Group("/auth")
 	protected.Use(AuthMiddleware(jwtSvc))

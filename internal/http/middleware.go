@@ -9,18 +9,36 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AuthMiddleware(jwt *auth.JWTService) gin.HandlerFunc {
+func AuthMiddleware(jwtSvc *auth.JWTService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
+
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+			c.AbortWithStatusJSON(
+				http.StatusUnauthorized,
+				gin.H{"error": "missing token"},
+			)
 			return
 		}
 
-		token := strings.TrimPrefix(authHeader, "Bearer ")
-		claims, err := jwt.VerifyToken(token)
+		token := strings.TrimSpace(
+			strings.TrimPrefix(authHeader, "Bearer "),
+		)
+
+		if token == "" {
+			c.AbortWithStatusJSON(
+				http.StatusUnauthorized,
+				gin.H{"error": "missing token"},
+			)
+			return
+		}
+
+		claims, err := jwtSvc.VerifyToken(token)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			c.AbortWithStatusJSON(
+				http.StatusUnauthorized,
+				gin.H{"error": "invalid token"},
+			)
 			return
 		}
 
