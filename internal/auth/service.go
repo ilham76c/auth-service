@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"auth-service/internal/repository"
+	"auth-service/internal/security"
 )
 
 var ErrInvalidCredential = errors.New("invalid credential")
@@ -51,7 +52,7 @@ func (s *Service) Login(
 		return nil, ErrInvalidCredential
 	}
 
-	valid, err := VerifyPassword(password, *u.PasswordHash)
+	valid, err := security.VerifyPassword(password, *u.PasswordHash)
 	if err != nil || !valid {
 		return nil, ErrInvalidCredential
 	}

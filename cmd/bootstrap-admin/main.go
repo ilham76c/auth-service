@@ -10,9 +10,9 @@ import (
 	"strings"
 	"syscall"
 
-	"auth-service/internal/auth"
 	"auth-service/internal/config"
 	"auth-service/internal/database"
+	"auth-service/internal/security"
 
 	"golang.org/x/term"
 )
@@ -56,7 +56,7 @@ func main() {
 		log.Fatal("Password must not exceed 128 bytes")
 	}
 
-	hash, err := auth.HashPassword(password)
+	hash, err := security.HashPassword(password)
 	if err != nil {
 		log.Fatalf("Password hashing failed: %v", err)
 	}

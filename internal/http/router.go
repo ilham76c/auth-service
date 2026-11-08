@@ -2,12 +2,14 @@ package http
 
 import (
 	"auth-service/internal/auth"
+	"auth-service/internal/user"
 
 	"github.com/gin-gonic/gin"
 )
 
 func SetupRouter(
 	authSvc *auth.Service,
+	userSvc *user.Service,
 	jwtSvc *auth.JWTService,
 ) *gin.Engine {
 	r := gin.Default()
@@ -17,8 +19,9 @@ func SetupRouter(
 		panic(err)
 	}
 
-	h := NewHandler(authSvc)
+	h := NewHandler(authSvc, userSvc)
 
+	r.POST("/auth/register", h.Register)
 	r.POST("/auth/login", h.Login)
 	r.POST("/auth/refresh", h.Refresh)
 	r.POST("/auth/logout", h.Logout)

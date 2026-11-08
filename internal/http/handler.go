@@ -1,20 +1,24 @@
 package http
 
 import (
+	"errors"
 	"net/http"
 
 	"auth-service/internal/auth"
+	"auth-service/internal/user"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
 	auth *auth.Service
+	user *user.Service
 }
 
-func NewHandler(authSvc *auth.Service) *Handler {
+func NewHandler(authSvc *auth.Service, userSvc *user.Service) *Handler {
 	return &Handler{
 		auth: authSvc,
+		user: userSvc,
 	}
 }
 
@@ -135,5 +139,63 @@ func (h *Handler) Logout(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Logged out successfully",
+	})
+}
+
+type RegisterRequest struct {
+	Username  string `json:"username" binding:"required"`
+	Firstname string `json:"firstname" binding:"required"`
+	Lastname  string `json:"lastname" binding:"required"`
+	Email     string `json:"email" binding:"required,email"`
+	Password  string `json:"password" binding:"required"`
+}
+
+func (h *Handler) Register(c *gin.Context) {
+	var req RegisterRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request body",
+		})
+		return
+	}
+
+	result, err := h.user.Register(
+		c.Request.Context(),
+		user.RegistrationInput{
+			Username:  req.Username,
+			Firstname: req.Firstname,
+			Lastname:  req.Lastname,
+			Email:     req.Email,
+			Password:  req.Password,
+		},
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, user.ErrInvalidRegistration):
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+		case errors.Is(err, user.ErrUsernameAlreadyExists),
+			errors.Is(err, user.ErrEmailAlreadyExists):
+			c.JSON(http.StatusConflict, gin.H{
+				"error": err.Error(),
+			})
+
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Registration failed",
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":                  "Registration successful. Please verify your email.",
+		"user_id":                  result.UserID,
+		"uuid":                     result.UUID,
+		"email_verification_token": result.EmailVerificationToken,
 	})
 }

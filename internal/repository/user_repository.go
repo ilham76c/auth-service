@@ -1,10 +1,11 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
-	"auth-service/internal/user"
+	"auth-service/internal/model"
 )
 
 var ErrUserNotFound = errors.New("user not found")
@@ -19,7 +20,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	}
 }
 
-func (r *UserRepository) FindByEmail(email string) (*user.User, error) {
+func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 	query := `
 		SELECT
 			id,
@@ -39,7 +40,7 @@ func (r *UserRepository) FindByEmail(email string) (*user.User, error) {
 	`
 
 	var (
-		u               user.User
+		u               model.User
 		username        sql.NullString
 		firstname       sql.NullString
 		lastname        sql.NullString
@@ -85,4 +86,102 @@ func (r *UserRepository) FindByEmail(email string) (*user.User, error) {
 	}
 
 	return &u, nil
+}
+
+func (r *UserRepository) Create(
+	ctx context.Context,
+	username string,
+	firstname string,
+	lastname string,
+	email string,
+	passwordHash string,
+) (*model.User, error) {
+	query := `
+		INSERT INTO mydream.users (
+			username,
+			firstname,
+			lastname,
+			email,
+			password_hash,
+			is_active
+		)
+		VALUES ($1, $2, $3, $4, $5, FALSE)
+		RETURNING id, uuid::text
+	`
+
+	u := &model.User{
+		Username:     username,
+		Firstname:    firstname,
+		Lastname:     lastname,
+		Email:        &email,
+		PasswordHash: &passwordHash,
+		IsActive:     false,
+	}
+
+	err := r.db.QueryRowContext(
+		ctx,
+		query,
+		username,
+		firstname,
+		lastname,
+		email,
+		passwordHash,
+	).Scan(
+		&u.ID,
+		&u.UUID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
+}
+
+func (r *UserRepository) CreateTx(
+	ctx context.Context,
+	tx *sql.Tx,
+	username string,
+	firstname string,
+	lastname string,
+	email string,
+	passwordHash string,
+) (*model.User, error) {
+	query := `
+		INSERT INTO mydream.users (
+			username,
+			firstname,
+			lastname,
+			email,
+			password_hash,
+			is_active
+		)
+		VALUES ($1, $2, $3, $4, $5, FALSE)
+		RETURNING id, uuid::text
+	`
+
+	u := &model.User{
+		Username:     username,
+		Firstname:    firstname,
+		Lastname:     lastname,
+		Email:        &email,
+		PasswordHash: &passwordHash,
+		IsActive:     false,
+	}
+
+	err := tx.QueryRowContext(
+		ctx,
+		query,
+		username,
+		firstname,
+		lastname,
+		email,
+		passwordHash,
+	).Scan(&u.ID, &u.UUID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
 }

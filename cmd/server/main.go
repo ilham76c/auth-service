@@ -7,6 +7,7 @@ import (
 	"auth-service/internal/config"
 	"auth-service/internal/database"
 	"auth-service/internal/repository"
+	"auth-service/internal/user"
 
 	httpLayer "auth-service/internal/http"
 
@@ -29,8 +30,14 @@ func main() {
 	jwtSvc := auth.NewJWTService(cfg.JWTSecret)
 
 	userRepo := repository.NewUserRepository(db)
-
 	refreshRepo := repository.NewRefreshTokenRepository(db)
+	verificationRepo := repository.NewEmailVerificationRepository(db)
+
+	userSvc := user.NewService(
+		db,
+		userRepo,
+		verificationRepo,
+	)
 
 	authSvc := auth.NewService(
 		jwtSvc,
@@ -38,7 +45,7 @@ func main() {
 		refreshRepo,
 	)
 
-	router := httpLayer.SetupRouter(authSvc, jwtSvc)
+	router := httpLayer.SetupRouter(authSvc, userSvc, jwtSvc)
 
 	log.Printf("Auth service running on :%s", cfg.Port)
 
