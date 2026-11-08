@@ -21,9 +21,12 @@ var usernameRegex = regexp.MustCompile(
 )
 
 var (
-	ErrInvalidRegistration   = errors.New("invalid registration")
-	ErrEmailAlreadyExists    = errors.New("email already registered")
-	ErrUsernameAlreadyExists = errors.New("username already taken")
+	ErrInvalidRegistration       = errors.New("invalid registration")
+	ErrEmailAlreadyExists        = errors.New("email already registered")
+	ErrUsernameAlreadyExists     = errors.New("username already taken")
+	ErrVerificationTokenNotFound = repository.ErrVerificationTokenNotFound
+	ErrVerificationTokenExpired  = repository.ErrVerificationTokenExpired
+	ErrVerificationTokenUsed     = repository.ErrVerificationTokenUsed
 )
 
 const EmailVerificationExpiry = 24 * time.Hour
@@ -152,4 +155,16 @@ func (s *Service) Register(
 		UUID:                   u.UUID,
 		EmailVerificationToken: token,
 	}, nil
+}
+
+func (s *Service) VerifyEmail(ctx context.Context, token string) error {
+	token = strings.TrimSpace(token)
+
+	if token == "" {
+		return ErrInvalidRegistration
+	}
+
+	tokenHash := auth.HashEmailVerificationToken(token)
+
+	return s.verificationRepo.Verify(ctx, tokenHash)
 }

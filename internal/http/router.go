@@ -22,6 +22,7 @@ func SetupRouter(
 	h := NewHandler(authSvc, userSvc)
 
 	r.POST("/auth/register", h.Register)
+	r.POST("/auth/verify-email", h.VerifyEmail)
 	r.POST("/auth/login", h.Login)
 	r.POST("/auth/refresh", h.Refresh)
 	r.POST("/auth/logout", h.Logout)

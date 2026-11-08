@@ -199,3 +199,47 @@ func (h *Handler) Register(c *gin.Context) {
 		"email_verification_token": result.EmailVerificationToken,
 	})
 }
+
+type VerifyEmailRequest struct {
+	Token string `json:"token" binding:"required"`
+}
+
+func (h *Handler) VerifyEmail(c *gin.Context) {
+	var req VerifyEmailRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request body",
+		})
+		return
+	}
+
+	err := h.user.VerifyEmail(
+		c.Request.Context(),
+		req.Token,
+	)
+
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Email verified successfully",
+		})
+
+	case errors.Is(err, user.ErrVerificationTokenNotFound),
+		errors.Is(err, user.ErrVerificationTokenExpired),
+		errors.Is(err, user.ErrVerificationTokenUsed):
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid, expired, or already used verification token",
+		})
+
+	case errors.Is(err, user.ErrInvalidRegistration):
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Verification token is required",
+		})
+
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Email verification failed",
+		})
+	}
+}
