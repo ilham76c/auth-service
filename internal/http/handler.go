@@ -193,10 +193,9 @@ func (h *Handler) Register(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message":                  "Registration successful. Please verify your email.",
-		"user_id":                  result.UserID,
-		"uuid":                     result.UUID,
-		"email_verification_token": result.EmailVerificationToken,
+		"message": "Registration successful. Please check your email to verify your account.",
+		"user_id": result.UserID,
+		"uuid":    result.UUID,
 	})
 }
 

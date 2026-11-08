@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/mail"
 	"regexp"
 	"strings"
 	"time"
 
 	"auth-service/internal/auth"
+	"auth-service/internal/email"
 	"auth-service/internal/repository"
 	"auth-service/internal/security"
 
@@ -66,17 +68,23 @@ type Service struct {
 	db               *sql.DB
 	userRepo         *repository.UserRepository
 	verificationRepo *repository.EmailVerificationRepository
+	emailService     email.Service
+	appBaseURL       string
 }
 
 func NewService(
 	db *sql.DB,
 	userRepo *repository.UserRepository,
 	verificationRepo *repository.EmailVerificationRepository,
+	emailService email.Service,
+	appBaseURL string,
 ) *Service {
 	return &Service{
 		db:               db,
 		userRepo:         userRepo,
 		verificationRepo: verificationRepo,
+		emailService:     emailService,
+		appBaseURL:       appBaseURL,
 	}
 }
 
@@ -150,10 +158,21 @@ func (s *Service) Register(
 		return nil, err
 	}
 
+	verificationURL := email.BuildVerificationURL(
+		s.appBaseURL,
+		token,
+	)
+
+	if err := s.emailService.SendVerificationEmail(
+		input.Email,
+		verificationURL,
+	); err != nil {
+		return nil, fmt.Errorf("failed to send verification email: %w", err)
+	}
+
 	return &RegistrationResult{
-		UserID:                 u.ID,
-		UUID:                   u.UUID,
-		EmailVerificationToken: token,
+		UserID: u.ID,
+		UUID:   u.UUID,
 	}, nil
 }
 

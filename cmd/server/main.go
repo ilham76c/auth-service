@@ -6,6 +6,7 @@ import (
 	"auth-service/internal/auth"
 	"auth-service/internal/config"
 	"auth-service/internal/database"
+	"auth-service/internal/email"
 	"auth-service/internal/repository"
 	"auth-service/internal/user"
 
@@ -33,10 +34,20 @@ func main() {
 	refreshRepo := repository.NewRefreshTokenRepository(db)
 	verificationRepo := repository.NewEmailVerificationRepository(db)
 
+	smtpSvc := email.NewSMTPService(email.SMTPConfig{
+		Host:     cfg.SMTPHost,
+		Port:     cfg.SMTPPort,
+		Username: cfg.SMTPUsername,
+		Password: cfg.SMTPPassword,
+		From:     cfg.SMTPFrom,
+	})
+
 	userSvc := user.NewService(
 		db,
 		userRepo,
 		verificationRepo,
+		smtpSvc,
+		cfg.AppBaseURL,
 	)
 
 	authSvc := auth.NewService(
