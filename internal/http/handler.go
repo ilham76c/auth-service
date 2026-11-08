@@ -242,3 +242,42 @@ func (h *Handler) VerifyEmail(c *gin.Context) {
 		})
 	}
 }
+
+type ResendVerificationRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+func (h *Handler) ResendVerification(c *gin.Context) {
+	var req ResendVerificationRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request body",
+		})
+		return
+	}
+
+	err := h.user.ResendVerification(
+		c.Request.Context(),
+		req.Email,
+	)
+
+	if errors.Is(err, user.ErrInvalidRegistration) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid email address",
+		})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Unable to process verification request",
+		})
+		return
+	}
+
+	// Generic response to prevent account enumeration.
+	c.JSON(http.StatusOK, gin.H{
+		"message": "If the account requires verification, a verification email will be sent.",
+	})
+}

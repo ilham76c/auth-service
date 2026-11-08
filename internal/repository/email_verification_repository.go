@@ -117,3 +117,42 @@ func (r *EmailVerificationRepository) CreateTx(
 
 	return err
 }
+
+func (r *EmailVerificationRepository) ReplacePending(
+	ctx context.Context,
+	userID int,
+	tokenHash string,
+	expiresAt time.Time,
+) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Invalidate previous unused verification tokens.
+	_, err = tx.ExecContext(ctx, `
+		UPDATE mydream.email_verification_tokens
+		SET used_at = NOW()
+		WHERE user_id = $1
+		  AND used_at IS NULL
+	`, userID)
+	if err != nil {
+		return err
+	}
+
+	// Store the new verification token.
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO mydream.email_verification_tokens (
+			user_id,
+			token_hash,
+			expires_at
+		)
+		VALUES ($1, $2, $3)
+	`, userID, tokenHash, expiresAt)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}

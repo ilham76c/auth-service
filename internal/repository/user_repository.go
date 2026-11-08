@@ -185,3 +185,49 @@ func (r *UserRepository) CreateTx(
 
 	return u, nil
 }
+
+func (r *UserRepository) FindUnverifiedByEmail(
+	ctx context.Context,
+	email string,
+) (*model.User, error) {
+	var (
+		u         model.User
+		userEmail sql.NullString
+		firstname sql.NullString
+		lastname  sql.NullString
+	)
+
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, uuid::text, username, firstname, lastname, email, is_active
+		FROM mydream.users
+		WHERE LOWER(email) = LOWER($1)
+		  AND email_verified_at IS NULL
+		  AND is_active = FALSE
+		  AND deleted_at IS NULL
+		LIMIT 1
+	`, email).Scan(
+		&u.ID,
+		&u.UUID,
+		&u.Username,
+		&firstname,
+		&lastname,
+		&userEmail,
+		&u.IsActive,
+	)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	u.Firstname = firstname.String
+	u.Lastname = lastname.String
+
+	if userEmail.Valid {
+		u.Email = &userEmail.String
+	}
+
+	return &u, nil
+}

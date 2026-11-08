@@ -29,6 +29,7 @@ var (
 	ErrVerificationTokenNotFound = repository.ErrVerificationTokenNotFound
 	ErrVerificationTokenExpired  = repository.ErrVerificationTokenExpired
 	ErrVerificationTokenUsed     = repository.ErrVerificationTokenUsed
+	ErrEmailAlreadyVerified      = errors.New("email already verified")
 )
 
 const EmailVerificationExpiry = 24 * time.Hour
@@ -186,4 +187,53 @@ func (s *Service) VerifyEmail(ctx context.Context, token string) error {
 	tokenHash := auth.HashEmailVerificationToken(token)
 
 	return s.verificationRepo.Verify(ctx, tokenHash)
+}
+
+func (s *Service) ResendVerification(
+	ctx context.Context,
+	emailAddress string,
+) error {
+	emailAddress = strings.ToLower(strings.TrimSpace(emailAddress))
+
+	if _, err := mail.ParseAddress(emailAddress); err != nil {
+		return ErrInvalidRegistration
+	}
+
+	u, err := s.userRepo.FindUnverifiedByEmail(ctx, emailAddress)
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			// Do not reveal whether an email exists.
+			return nil
+		}
+		return err
+	}
+
+	token, err := auth.GenerateEmailVerificationToken()
+	if err != nil {
+		return err
+	}
+
+	err = s.verificationRepo.ReplacePending(
+		ctx,
+		u.ID,
+		auth.HashEmailVerificationToken(token),
+		time.Now().Add(EmailVerificationExpiry),
+	)
+	if err != nil {
+		return err
+	}
+
+	verificationURL := email.BuildVerificationURL(
+		s.appBaseURL,
+		token,
+	)
+
+	if err := s.emailService.SendVerificationEmail(
+		emailAddress,
+		verificationURL,
+	); err != nil {
+		return fmt.Errorf("failed to send verification email: %w", err)
+	}
+
+	return nil
 }
