@@ -4,6 +4,7 @@ import (
 	"auth-service/internal/auth"
 	"auth-service/internal/user"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -14,6 +15,27 @@ func SetupRouter(
 	jwtSvc *auth.JWTService,
 ) *gin.Engine {
 	r := gin.Default()
+
+	// CORS configuration
+	r.Use(cors.New(cors.Config{
+		AllowOrigins: []string{
+			"http://localhost:3000",
+		},
+		AllowMethods: []string{
+			"GET",
+			"POST",
+			"PUT",
+			"PATCH",
+			"DELETE",
+			"OPTIONS",
+		},
+		AllowHeaders: []string{
+			"Origin",
+			"Content-Type",
+			"Accept",
+			"Authorization",
+		},
+	}))
 
 	// Disable trusted proxies for local development.
 	if err := r.SetTrustedProxies(nil); err != nil {
