@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"auth-service/internal/auth"
@@ -11,14 +12,20 @@ import (
 )
 
 type Handler struct {
-	auth *auth.Service
-	user *user.Service
+	auth  *auth.Service
+	user  *user.Service
+	oauth *auth.OAuthService
 }
 
-func NewHandler(authSvc *auth.Service, userSvc *user.Service) *Handler {
+func NewHandler(
+	authSvc *auth.Service,
+	userSvc *user.Service,
+	oauthSvc *auth.OAuthService,
+) *Handler {
 	return &Handler{
-		auth: authSvc,
-		user: userSvc,
+		auth:  authSvc,
+		user:  userSvc,
+		oauth: oauthSvc,
 	}
 }
 
@@ -279,5 +286,68 @@ func (h *Handler) ResendVerification(c *gin.Context) {
 	// Generic response to prevent account enumeration.
 	c.JSON(http.StatusOK, gin.H{
 		"message": "If the account requires verification, a verification email will be sent.",
+	})
+}
+
+type OAuthLoginRequest struct {
+	Provider string `json:"provider" binding:"required"`
+	IDToken  string `json:"id_token" binding:"required"`
+}
+
+func (h *Handler) OAuthLogin(c *gin.Context) {
+	var req OAuthLoginRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request body",
+		})
+		return
+	}
+
+	if req.Provider != "google" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Unsupported OAuth provider",
+		})
+		return
+	}
+
+	tokens, err := h.oauth.LoginWithGoogle(
+		c.Request.Context(),
+		req.IDToken,
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, auth.ErrInvalidGoogleToken),
+			errors.Is(err, auth.ErrUnverifiedGoogleEmail):
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid Google identity",
+			})
+
+		case errors.Is(err, auth.ErrOAuthEmailNotVerified):
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "Email is not verified. Please verify your email before signing in with Google.",
+			})
+
+		case errors.Is(err, auth.ErrOAuthEmailAlreadyRegistered):
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "Email already registered. Please login using your existing method.",
+			})
+
+		default:
+			log.Printf("[OAuthLogin] internal error: %+v", err)
+
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "OAuth authentication failed",
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":  tokens.AccessToken,
+		"refresh_token": tokens.RefreshToken,
+		"token_type":    "Bearer",
+		"expires_in":    tokens.ExpiresIn,
 	})
 }

@@ -2,8 +2,12 @@ package repository
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"errors"
+	"fmt"
+	"strings"
 
 	"auth-service/internal/model"
 )
@@ -22,21 +26,20 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 	query := `
-		SELECT
-			id,
-			uuid::text,
-			username,
-			firstname,
-			lastname,
-			email,
-			password_hash,
-			email_verified_at,
-			is_active
-		FROM mydream.users
-		WHERE LOWER(email) = LOWER($1)
-		  AND is_active = TRUE
-		  AND deleted_at IS NULL
-		LIMIT 1
+    SELECT
+        id,
+        uuid::text,
+        username,
+        firstname,
+        lastname,
+        email,
+        password_hash,
+        email_verified_at,
+        is_active
+    FROM mydream.users
+    WHERE LOWER(email) = LOWER($1)
+      AND deleted_at IS NULL
+    LIMIT 1
 	`
 
 	var (
@@ -230,4 +233,100 @@ func (r *UserRepository) FindUnverifiedByEmail(
 	}
 
 	return &u, nil
+}
+
+func generateOAuthUsername(email string) (string, error) {
+	parts := strings.SplitN(strings.ToLower(strings.TrimSpace(email)), "@", 2)
+	if len(parts) != 2 || parts[0] == "" {
+		return "", errors.New("invalid email address")
+	}
+
+	localPart := parts[0]
+	var builder strings.Builder
+
+	for _, char := range localPart {
+		if (char >= 'a' && char <= 'z') ||
+			(char >= '0' && char <= '9') ||
+			char == '.' || char == '_' || char == '-' {
+			builder.WriteRune(char)
+		}
+	}
+
+	base := strings.Trim(builder.String(), "._-")
+	if len(base) < 2 {
+		base = "user"
+	}
+
+	if len(base) > 22 {
+		base = base[:22]
+	}
+
+	randomBytes := make([]byte, 3)
+	if _, err := rand.Read(randomBytes); err != nil {
+		return "", fmt.Errorf("generate username suffix: %w", err)
+	}
+
+	return base + "-" + hex.EncodeToString(randomBytes), nil
+}
+
+func (r *UserRepository) CreateOAuthUserTx(
+	ctx context.Context,
+	tx *sql.Tx,
+	email string,
+	firstname string,
+	lastname string,
+) (*model.User, error) {
+	username, err := generateOAuthUsername(email)
+	if err != nil {
+		return nil, err
+	}
+
+	firstname = strings.TrimSpace(firstname)
+	lastname = strings.TrimSpace(lastname)
+
+	if firstname == "" {
+		firstname = username
+	}
+
+	if lastname == "" {
+		lastname = "-"
+	}
+
+	query := `
+		INSERT INTO mydream.users (
+			username,
+			firstname,
+			lastname,
+			email,
+			password_hash,
+			email_verified_at,
+			is_active
+		)
+		VALUES ($1, $2, $3, $4, NULL, NOW(), TRUE)
+		RETURNING id, uuid::text
+	`
+
+	u := &model.User{
+		Username:     username,
+		Firstname:    firstname,
+		Lastname:     lastname,
+		Email:        &email,
+		PasswordHash: nil,
+		IsActive:     true,
+	}
+
+	err = tx.QueryRowContext(
+		ctx,
+		query,
+		username,
+		firstname,
+		lastname,
+		email,
+	).Scan(&u.ID, &u.UUID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
 }

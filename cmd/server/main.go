@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"auth-service/internal/auth"
@@ -29,10 +30,27 @@ func main() {
 	log.Println("PostgreSQL connected successfully")
 
 	jwtSvc := auth.NewJWTService(cfg.JWTSecret)
+	googleVerifier, err := auth.NewGoogleVerifier(
+		context.Background(),
+		cfg.GoogleClientID,
+	)
+	if err != nil {
+		log.Fatalf("Google verifier initialization failed: %v", err)
+	}
 
+	oauthRepo := repository.NewOAuthRepository(db)
 	userRepo := repository.NewUserRepository(db)
 	refreshRepo := repository.NewRefreshTokenRepository(db)
 	verificationRepo := repository.NewEmailVerificationRepository(db)
+
+	oauthSvc := auth.NewOAuthService(
+		db,
+		googleVerifier,
+		userRepo,
+		oauthRepo,
+		refreshRepo,
+		jwtSvc,
+	)
 
 	smtpSvc := email.NewSMTPService(email.SMTPConfig{
 		Host:     cfg.SMTPHost,
@@ -56,7 +74,12 @@ func main() {
 		refreshRepo,
 	)
 
-	router := httpLayer.SetupRouter(authSvc, userSvc, jwtSvc)
+	router := httpLayer.SetupRouter(
+		authSvc,
+		userSvc,
+		oauthSvc,
+		jwtSvc,
+	)
 
 	log.Printf("Auth service running on :%s", cfg.Port)
 

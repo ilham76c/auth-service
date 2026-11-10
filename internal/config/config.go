@@ -17,7 +17,8 @@ type Config struct {
 	SMTPPassword string
 	SMTPFrom     string
 
-	AppBaseURL string
+	AppBaseURL     string
+	GoogleClientID string
 }
 
 func Load() *Config {
@@ -37,7 +38,8 @@ func Load() *Config {
 		SMTPPassword: os.Getenv("SMTP_PASSWORD"),
 		SMTPFrom:     os.Getenv("SMTP_FROM"),
 
-		AppBaseURL: getEnv("APP_BASE_URL", "http://localhost:3000"),
+		AppBaseURL:     getEnv("APP_BASE_URL", "http://localhost:3000"),
+		GoogleClientID: os.Getenv("GOOGLE_CLIENT_ID"),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -46,6 +48,10 @@ func Load() *Config {
 
 	if len(cfg.JWTSecret) < 32 {
 		log.Fatal("JWT_SECRET must be at least 32 characters")
+	}
+
+	if cfg.GoogleClientID == "" {
+		log.Fatal("GOOGLE_CLIENT_ID is required")
 	}
 
 	return cfg

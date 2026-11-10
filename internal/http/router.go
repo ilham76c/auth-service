@@ -10,6 +10,7 @@ import (
 func SetupRouter(
 	authSvc *auth.Service,
 	userSvc *user.Service,
+	oauthSvc *auth.OAuthService,
 	jwtSvc *auth.JWTService,
 ) *gin.Engine {
 	r := gin.Default()
@@ -19,12 +20,13 @@ func SetupRouter(
 		panic(err)
 	}
 
-	h := NewHandler(authSvc, userSvc)
+	h := NewHandler(authSvc, userSvc, oauthSvc)
 
 	r.POST("/auth/register", h.Register)
 	r.POST("/auth/verify-email", h.VerifyEmail)
 	r.POST("/auth/resend-verification", h.ResendVerification)
 	r.POST("/auth/login", h.Login)
+	r.POST("/auth/oauth", h.OAuthLogin)
 	r.POST("/auth/refresh", h.Refresh)
 	r.POST("/auth/logout", h.Logout)
 
