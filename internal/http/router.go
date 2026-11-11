@@ -47,6 +47,7 @@ func SetupRouter(
 	r.POST("/auth/register", h.Register)
 	r.POST("/auth/verify-email", h.VerifyEmail)
 	r.POST("/auth/resend-verification", h.ResendVerification)
+	r.GET("/auth/verification-status", h.VerificationStatus)
 	r.POST("/auth/login", h.Login)
 	r.POST("/auth/oauth", h.OAuthLogin)
 	r.POST("/auth/refresh", h.Refresh)

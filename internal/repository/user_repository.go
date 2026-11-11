@@ -330,3 +330,31 @@ func (r *UserRepository) CreateOAuthUserTx(
 
 	return u, nil
 }
+
+func (r *UserRepository) IsEmailVerified(
+	ctx context.Context,
+	email string,
+) (bool, error) {
+	var verified bool
+
+	err := r.db.QueryRowContext(
+		ctx,
+		`
+		SELECT email_verified_at IS NOT NULL
+		FROM mydream.users
+		WHERE LOWER(email) = LOWER($1)
+		  AND deleted_at IS NULL
+		`,
+		email,
+	).Scan(&verified)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return verified, nil
+}

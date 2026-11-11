@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 
 	"auth-service/internal/auth"
 	"auth-service/internal/user"
@@ -200,9 +201,10 @@ func (h *Handler) Register(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message": "Registration successful. Please check your email to verify your account.",
-		"user_id": result.UserID,
-		"uuid":    result.UUID,
+		"message":                   "Registration successful. Please check your email to verify your account.",
+		"user_id":                   result.UserID,
+		"uuid":                      result.UUID,
+		"registration_status_token": result.RegistrationStatusToken,
 	})
 }
 
@@ -349,5 +351,46 @@ func (h *Handler) OAuthLogin(c *gin.Context) {
 		"refresh_token": tokens.RefreshToken,
 		"token_type":    "Bearer",
 		"expires_in":    tokens.ExpiresIn,
+	})
+}
+
+func (h *Handler) VerificationStatus(c *gin.Context) {
+	authHeader := c.GetHeader("Authorization")
+
+	const bearerPrefix = "Bearer "
+
+	if !strings.HasPrefix(authHeader, bearerPrefix) {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Missing or invalid authorization token",
+		})
+		return
+	}
+
+	token := strings.TrimSpace(
+		strings.TrimPrefix(authHeader, bearerPrefix),
+	)
+
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Missing or invalid authorization token",
+		})
+		return
+	}
+
+	verified, err := h.user.IsRegistrationStatusVerified(
+		c.Request.Context(),
+		token,
+	)
+	if err != nil {
+		log.Printf("[VerificationStatus] error: %v", err)
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to check verification status",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"verified": verified,
 	})
 }

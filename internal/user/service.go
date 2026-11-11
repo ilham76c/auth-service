@@ -60,15 +60,17 @@ type RegistrationInput struct {
 }
 
 type RegistrationResult struct {
-	UserID                 int
-	UUID                   string
-	EmailVerificationToken string
+	UserID                  int
+	UUID                    string
+	EmailVerificationToken  string
+	RegistrationStatusToken string
 }
 
 type Service struct {
 	db               *sql.DB
 	userRepo         *repository.UserRepository
 	verificationRepo *repository.EmailVerificationRepository
+	statusRepo       *repository.RegistrationStatusRepository
 	emailService     email.Service
 	appBaseURL       string
 }
@@ -77,6 +79,7 @@ func NewService(
 	db *sql.DB,
 	userRepo *repository.UserRepository,
 	verificationRepo *repository.EmailVerificationRepository,
+	statusRepo *repository.RegistrationStatusRepository,
 	emailService email.Service,
 	appBaseURL string,
 ) *Service {
@@ -84,6 +87,7 @@ func NewService(
 		db:               db,
 		userRepo:         userRepo,
 		verificationRepo: verificationRepo,
+		statusRepo:       statusRepo,
 		emailService:     emailService,
 		appBaseURL:       appBaseURL,
 	}
@@ -155,6 +159,24 @@ func (s *Service) Register(
 		return nil, err
 	}
 
+	// Generate registration status token.
+	statusToken, err := auth.GenerateRegistrationStatusToken()
+	if err != nil {
+		return nil, err
+	}
+
+	// Store only the token hash.
+	err = s.statusRepo.CreateTx(
+		ctx,
+		tx,
+		u.ID,
+		auth.HashRegistrationStatusToken(statusToken),
+		time.Now().Add(auth.RegistrationStatusTokenExpiry),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -172,8 +194,9 @@ func (s *Service) Register(
 	}
 
 	return &RegistrationResult{
-		UserID: u.ID,
-		UUID:   u.UUID,
+		UserID:                  u.ID,
+		UUID:                    u.UUID,
+		RegistrationStatusToken: statusToken,
 	}, nil
 }
 
@@ -236,4 +259,30 @@ func (s *Service) ResendVerification(
 	}
 
 	return nil
+}
+
+func (s *Service) IsEmailVerified(
+	ctx context.Context,
+	email string,
+) (bool, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+
+	if email == "" {
+		return false, ErrInvalidRegistration
+	}
+
+	return s.userRepo.IsEmailVerified(ctx, email)
+}
+
+func (s *Service) IsRegistrationStatusVerified(
+	ctx context.Context,
+	token string,
+) (bool, error) {
+	if strings.TrimSpace(token) == "" {
+		return false, ErrInvalidRegistration
+	}
+
+	tokenHash := auth.HashRegistrationStatusToken(token)
+
+	return s.statusRepo.IsVerified(ctx, tokenHash)
 }

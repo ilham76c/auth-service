@@ -42,6 +42,7 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	refreshRepo := repository.NewRefreshTokenRepository(db)
 	verificationRepo := repository.NewEmailVerificationRepository(db)
+	statusRepo := repository.NewRegistrationStatusRepository(db)
 
 	oauthSvc := auth.NewOAuthService(
 		db,
@@ -64,6 +65,7 @@ func main() {
 		db,
 		userRepo,
 		verificationRepo,
+		statusRepo,
 		smtpSvc,
 		cfg.AppBaseURL,
 	)
