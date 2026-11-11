@@ -81,3 +81,10 @@ make fmt
 make lint
 make run
 ```
+
+
+## Tanggung Jawab
+- repository bertanggung jawab terhadap akses database.
+- user bertanggung jawab terhadap business logic user.
+- auth bertanggung jawab terhadap autentikasi dan token.
+- http bertanggung jawab terhadap HTTP handler dan routing.
